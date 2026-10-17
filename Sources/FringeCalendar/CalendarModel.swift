@@ -1,0 +1,122 @@
+import AppKit
+import EventKit
+import FringeCore
+
+/// Reads the next seven days from EventKit. Nothing happens until the tab is first shown; after that the
+/// list is refreshed by store, day-change and wake notifications (no polling). Changes that arrive while
+/// the tab is hidden only mark the list stale; it is reloaded the next time the tab is shown.
+@MainActor final class CalendarModel: ObservableObject {
+    enum Access: Equatable { case unknown, notDetermined, requesting, denied, restricted, granted }
+
+    @Published private(set) var access: Access = .unknown
+    @Published private(set) var entries: [CalendarEntry] = []
+    @Published private(set) var loaded = false
+
+    private var store: EKEventStore?
+    private var observers: [(NotificationCenter, NSObjectProtocol)] = []
+    private var visible = false
+    private var stale = true
+    private var requested = false
+
+    init() {}
+
+    func setVisible(_ visible: Bool) {
+        self.visible = visible
+        guard visible else { return }
+        updateAccess()
+        switch access {
+        case .notDetermined where !requested: requestAccess()
+        case .granted where stale: reload()
+        default: break
+        }
+    }
+
+    /// Asks for full access; the system prompt shows only while the status is not determined.
+    func requestAccess() {
+        guard access == .notDetermined else { return }
+        requested = true
+        access = .requesting
+        let store = eventStore()
+        store.requestFullAccessToEvents { [weak self] _, _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.access = .unknown
+                self.updateAccess()
+                if self.access == .granted { self.stale = true; if self.visible { self.reload() } }
+            }
+        }
+    }
+
+    private func eventStore() -> EKEventStore {
+        if let store { return store }
+        let created = EKEventStore()
+        store = created
+        return created
+    }
+
+    private func updateAccess() {
+        if access == .requesting { return }
+        access = switch EKEventStore.authorizationStatus(for: .event) {
+        case .fullAccess: .granted
+        case .notDetermined: .notDetermined
+        case .restricted: .restricted
+        default: .denied // denied, write-only (not enough to read), or unknown future cases
+        }
+    }
+
+    private func reload() {
+        let store = eventStore()
+        observeIfNeeded(store)
+        let calendar = Calendar.current
+        let window = CalendarSchedule.window(now: Date(), calendar: calendar)
+        // Start a day early so a timed event still in progress after midnight is included.
+        let from = calendar.date(byAdding: .day, value: -1, to: window.start) ?? window.start
+        let predicate = store.predicateForEvents(withStart: from, end: window.end, calendars: nil)
+        entries = store.events(matching: predicate).compactMap(Self.entry(from:))
+        stale = false
+        loaded = true
+    }
+
+    private func observeIfNeeded(_ store: EKEventStore) {
+        guard observers.isEmpty else { return }
+        let center = NotificationCenter.default, workspace = NSWorkspace.shared.notificationCenter
+        let pairs: [(NotificationCenter, Notification.Name, AnyObject?)] = [
+            (center, .EKEventStoreChanged, store),
+            (center, .NSCalendarDayChanged, nil),
+            (workspace, NSWorkspace.didWakeNotification, nil)
+        ]
+        for (target, name, object) in pairs {
+            let token = target.addObserver(forName: name, object: object, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.sourceChanged() }
+            }
+            observers.append((target, token))
+        }
+    }
+
+    private func sourceChanged() {
+        stale = true
+        guard visible else { return }
+        updateAccess()
+        if access == .granted { reload() }
+    }
+
+    private static func entry(from event: EKEvent) -> CalendarEntry? {
+        if event.status == .canceled { return nil }
+        if event.attendees?.first(where: \.isCurrentUser)?.participantStatus == .declined { return nil }
+        guard let start = event.startDate, let end = event.endDate else { return nil }
+        let base = event.calendarItemExternalIdentifier ?? event.eventIdentifier ?? UUID().uuidString
+        let title = event.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return CalendarEntry(
+            id: "\(base)|\(Int(start.timeIntervalSince1970))",
+            title: title.isEmpty ? L10n.text("Без названия", "Untitled") : title,
+            start: start, end: max(end, start), isAllDay: event.isAllDay,
+            color: color(of: event.calendar),
+            externalIdentifier: event.calendarItemExternalIdentifier,
+            meetingURL: MeetingLink.find(url: event.url, location: event.location, notes: event.notes))
+    }
+
+    private static func color(of calendar: EKCalendar?) -> CalendarColor {
+        guard let color = calendar?.color?.usingColorSpace(.sRGB) else { return .fallback }
+        return CalendarColor(red: color.redComponent, green: color.greenComponent, blue: color.blueComponent)
+    }
+}
