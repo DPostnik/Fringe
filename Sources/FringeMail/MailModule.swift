@@ -22,5 +22,7 @@ import FringeNotch
         if visible { model.refreshNow(reason: "tab shown") }
     }
 
+    public func makeHeaderAccessory() -> AnyView? { model.isConfigured ? AnyView(MailHeader(model: model)) : nil }
+
     public func makeSettingsView() -> AnyView? { AnyView(MailSettingsView(model: model)) }
 }

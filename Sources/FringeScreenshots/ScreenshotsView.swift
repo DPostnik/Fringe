@@ -10,37 +10,10 @@ struct ScreenshotsView: View {
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 4)
 
     var body: some View {
-        VStack(spacing: 8) {
-            header
-            content.frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
+        content.frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var folderName: String { ScreenshotFolder.displayName(store.folder) }
-
-    private var header: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "folder.fill").font(.system(size: 10, weight: .semibold))
-            Text(folderName).font(.system(size: 11, weight: .semibold)).lineLimit(1).truncationMode(.middle)
-            if let notice = store.notice {
-                Text(notice).font(.system(size: 11)).foregroundStyle(.orange).lineLimit(1)
-            }
-            Spacer(minLength: 4)
-            if store.status == .ready, !store.items.isEmpty {
-                Text("\(store.items.count)").font(.system(size: 11, weight: .semibold, design: .rounded)).monospacedDigit()
-            }
-            Button {
-                ScreenshotActions.openFolder(store.folder); closePanel()
-            } label: {
-                Image(systemName: "arrow.up.forward.square").font(.system(size: 12, weight: .semibold))
-                    .frame(width: 22, height: 20).contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .help(L10n.text("Открыть папку в Finder", "Open folder in Finder"))
-        }
-        .foregroundStyle(.white.opacity(0.6))
-        .padding(.horizontal, 4)
-    }
 
     @ViewBuilder private var content: some View {
         switch store.status {
@@ -207,4 +180,35 @@ private struct CellAction: View {
         .onHover { hovering = $0 }
         .help(help)
     }
+}
+
+/// The title-row controls: folder name, count and "Open in Finder".
+struct ScreenshotsHeader: View {
+    @ObservedObject var store: ScreenshotStore
+    let closePanel: () -> Void
+
+    private var folderName: String { ScreenshotFolder.displayName(store.folder) }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "folder.fill").font(.system(size: 10, weight: .semibold))
+            Text(folderName).font(.system(size: 11, weight: .semibold)).lineLimit(1).truncationMode(.middle)
+            if let notice = store.notice {
+                Text(notice).font(.system(size: 11)).foregroundStyle(.orange).lineLimit(1)
+            }
+
+            if store.status == .ready, !store.items.isEmpty {
+                Text("\(store.items.count)").font(.system(size: 11, weight: .semibold, design: .rounded)).monospacedDigit()
+            }
+            Button {
+                ScreenshotActions.openFolder(store.folder); closePanel()
+            } label: {
+                Image(systemName: "arrow.up.forward.square").font(.system(size: 12, weight: .semibold))
+                    .frame(width: 22, height: 20).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(L10n.text("Открыть папку в Finder", "Open folder in Finder"))
+        }
+    }
+
 }

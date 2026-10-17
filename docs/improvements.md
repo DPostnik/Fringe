@@ -90,3 +90,12 @@ Status: delivered.
 - Switchboard `main` now carries the server side (FringeLinkServer, vendored FringeProtocol). After the rename Switchboard is `local.daniil.switchboard` with data in `~/Library/Application Support/Switchboard`; Fringe finds it by either id (commit 62a064b, from the rename work).
 
 Validation: after rebuilding Fringe and restarting Switchboard, Switchboard logged "Fringe connected; the island is handed off" and its island window left the screen; quitting Fringe brought it back, relaunching handed it off again.
+
+## 2026-10-17 - Tabs in a left column, one page template for every tab
+
+Status: delivered.
+
+- The tab bar became a column of icons on the left (name on hover, badges on the icon). Every tab now sits in the same page: a title row (tab name on the left, the tab's own controls on the right via `FringeTabModule.makeHeaderAccessory()`) and a fixed content area, so switching tabs no longer changes sizes and margins.
+- Shared `FringeMetrics` (spacing, row padding, corner radius, fonts) and a `fringeRow()` modifier; Mail and Screenshots moved their header controls into the title row; rows in Agents, Mail and Calendar use the same padding.
+
+Validation: full test suite passed; all five tabs captured on the real notch with the new layout (Agents showed a live chat from Switchboard).

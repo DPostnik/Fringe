@@ -62,7 +62,7 @@ private struct ChatRow: View {
             .help(L10n.text("Открыть чат", "Open chat"))
             ForEach(requests) { request in RequestCard(request: request, link: link, onOpenChat: onOpenChat) }
         }
-        .padding(10)
+        .padding(FringeMetrics.rowPadding)
         .fringeCard(highlighted: hovered)
         .onHover { hovered = $0 }
     }

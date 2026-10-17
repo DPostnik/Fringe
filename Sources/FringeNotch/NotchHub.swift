@@ -10,6 +10,8 @@ import FringeCore
     func start(hub: NotchHub)
     /// Built each time the tab becomes visible.
     func makeView() -> AnyView
+    /// Small controls on the right of the tab's title row (a counter, "Open in Finder"), if any.
+    func makeHeaderAccessory() -> AnyView?
     /// A section for the Settings window, if the tab has settings.
     func makeSettingsView() -> AnyView?
     /// The tab became visible or hidden (panel opened/closed or another tab selected).
@@ -18,6 +20,7 @@ import FringeCore
 
 public extension FringeTabModule {
     func start(hub: NotchHub) {}
+    func makeHeaderAccessory() -> AnyView? { nil }
     func makeSettingsView() -> AnyView? { nil }
     func visibilityChanged(_ visible: Bool) {}
 }

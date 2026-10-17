@@ -1,5 +1,23 @@
 import SwiftUI
 
+/// Shared measurements, so every tab has the same rhythm.
+public enum FringeMetrics {
+    /// Gap between blocks inside a tab and between the title row and the content.
+    public static let spacing: CGFloat = 8
+    /// Gap between rows of a list.
+    public static let rowSpacing: CGFloat = 6
+    public static let rowPadding = EdgeInsets(top: 8, leading: 10, bottom: 8, trailing: 10)
+    public static let cornerRadius: CGFloat = 10
+    public static let pageInset: CGFloat = 14
+    public static let railWidth: CGFloat = 34
+    public static let railGap: CGFloat = 12
+    public static let titleHeight: CGFloat = 22
+    public static let titleFont = Font.system(size: 15, weight: .semibold)
+    public static let rowTitleFont = Font.system(size: 13, weight: .semibold)
+    public static let bodyFont = Font.system(size: 12)
+    public static let captionFont = Font.system(size: 11, weight: .medium)
+}
+
 /// The panel's capsule button; `prominent` is the primary action.
 public struct FringeButtonStyle: ButtonStyle {
     let prominent: Bool
@@ -20,12 +38,16 @@ public struct FringeButtonStyle: ButtonStyle {
 public struct FringeCard: ViewModifier {
     var highlighted: Bool
     public func body(content: Content) -> some View {
-        content.background(.white.opacity(highlighted ? 0.11 : 0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        content.background(.white.opacity(highlighted ? 0.11 : 0.06), in: RoundedRectangle(cornerRadius: FringeMetrics.cornerRadius, style: .continuous))
     }
 }
 
 public extension View {
     func fringeCard(highlighted: Bool = false) -> some View { modifier(FringeCard(highlighted: highlighted)) }
+    /// A list row: standard padding on a card, full width.
+    func fringeRow(highlighted: Bool = false) -> some View {
+        padding(FringeMetrics.rowPadding).frame(maxWidth: .infinity, alignment: .leading).fringeCard(highlighted: highlighted)
+    }
 }
 
 /// Centered note for an empty or unavailable tab, with an optional action.

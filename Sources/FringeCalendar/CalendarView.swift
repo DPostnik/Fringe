@@ -124,7 +124,7 @@ private struct CalendarRow: View {
                     .help(entry.meetingURL?.host() ?? "")
             }
         }
-        .padding(.horizontal, 10).padding(.vertical, 7)
+        .padding(FringeMetrics.rowPadding)
         .fringeCard(highlighted: isCurrent || hovering)
         .overlay {
             if isCurrent {

@@ -17,6 +17,10 @@ import FringeNotch
         AnyView(ScreenshotsView(store: store, thumbnails: thumbnails) { [weak self] in self?.hub?.closePanel() })
     }
 
+    public func makeHeaderAccessory() -> AnyView? {
+        AnyView(ScreenshotsHeader(store: store) { [weak self] in self?.hub?.closePanel() })
+    }
+
     /// The Spotlight query lives only while the tab is on screen.
     public func visibilityChanged(_ visible: Bool) {
         if visible { store.start() } else { store.stop() }

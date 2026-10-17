@@ -34,15 +34,14 @@ struct MailTabView: View {
     }
 
     private var list: some View {
-        VStack(spacing: 6) {
-            header
+        VStack(spacing: FringeMetrics.rowSpacing) {
             if model.messages.isEmpty {
                 FringeEmptyState(symbol: "tray", message: L10n.text("Нет непрочитанных во «Входящих» (основные).",
                                                                      "No unread mail in Inbox (Primary)."))
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
                     TimelineView(.everyMinute) { context in
-                        LazyVStack(spacing: 4) {
+                        LazyVStack(spacing: FringeMetrics.rowSpacing) {
                             ForEach(model.messages) { message in
                                 MailRow(message: message, now: context.date) { model.open(message) }
                             }
@@ -53,23 +52,6 @@ struct MailTabView: View {
         }
     }
 
-    private var header: some View {
-        HStack(spacing: 6) {
-            if model.status != .connected {
-                Image(systemName: model.status == .offline ? "wifi.slash" : "arrow.triangle.2.circlepath")
-                    .font(.system(size: 10, weight: .semibold)).foregroundStyle(.orange)
-                Text(model.statusLine).lineLimit(1).truncationMode(.tail).foregroundStyle(.orange)
-            } else {
-                Text(L10n.text("Непрочитанные: \(model.unseenCount)", "Unread: \(model.unseenCount)"))
-                    .foregroundStyle(.white.opacity(0.55))
-            }
-            Spacer()
-            Button(L10n.text("Открыть Gmail", "Open Gmail")) { model.openInbox() }
-                .buttonStyle(.plain).foregroundStyle(.white.opacity(0.7))
-        }
-        .font(.system(size: 11, weight: .medium))
-        .padding(.horizontal, 4)
-    }
 }
 
 private struct MailRow: View {
@@ -91,9 +73,7 @@ private struct MailRow: View {
                 Text(message.displaySubject).font(.system(size: 12)).foregroundStyle(.white.opacity(0.7))
                     .lineLimit(1).truncationMode(.tail)
             }
-            .padding(.horizontal, 10).padding(.vertical, 7)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .fringeCard(highlighted: hovering)
+            .fringeRow(highlighted: hovering)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -200,6 +180,27 @@ struct MailSettingsView: View {
                                                 "Check the address (name@gmail.com); the password must be plain Latin letters.")
             default: error.message
             }
+        }
+    }
+}
+
+/// The title-row controls: connection state or unread count, and "Open Gmail".
+struct MailHeader: View {
+    @ObservedObject var model: MailModel
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if model.status != .connected {
+                Image(systemName: model.status == .offline ? "wifi.slash" : "arrow.triangle.2.circlepath")
+                    .font(.system(size: 10, weight: .semibold)).foregroundStyle(.orange)
+                Text(model.statusLine).lineLimit(1).truncationMode(.tail).foregroundStyle(.orange)
+            } else {
+                Text(L10n.text("Непрочитанные: \(model.unseenCount)", "Unread: \(model.unseenCount)"))
+                    .foregroundStyle(.white.opacity(0.55))
+            }
+
+            Button(L10n.text("Открыть Gmail", "Open Gmail")) { model.openInbox() }
+                .buttonStyle(.plain).foregroundStyle(.white.opacity(0.7))
         }
     }
 }

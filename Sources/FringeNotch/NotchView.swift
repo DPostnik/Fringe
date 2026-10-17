@@ -28,12 +28,11 @@ struct NotchView: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
             if expanded {
-                VStack(spacing: 8) {
-                    TabBar(state: state, hub: hub)
-                    content
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                HStack(alignment: .top, spacing: FringeMetrics.railGap) {
+                    TabRail(state: state, hub: hub)
+                    page
                 }
-                .padding(.horizontal, 14).padding(.bottom, 14)
+                .padding(.leading, 10).padding(.trailing, FringeMetrics.pageInset).padding(.top, 4).padding(.bottom, FringeMetrics.pageInset)
                 .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .top)))
             }
         }
@@ -43,11 +42,24 @@ struct NotchView: View {
         .animation(.spring(response: 0.38, dampingFraction: 0.78), value: state.mode)
     }
 
-    /// Only the open tab has a view; switching tabs or closing the panel drops it.
-    @ViewBuilder private var content: some View {
-        if let module = state.modules[state.tab] {
-            module.makeView().id(state.tab)
+    /// Every tab gets the same frame: a title row with the tab's own controls on the right, then
+    /// its content in a fixed area. Only the open tab has a view; switching or closing drops it.
+    private var page: some View {
+        VStack(alignment: .leading, spacing: FringeMetrics.spacing) {
+            HStack(spacing: 8) {
+                Text(state.tab.title()).font(FringeMetrics.titleFont).foregroundStyle(.white).lineLimit(1)
+                Spacer(minLength: 8)
+                state.modules[state.tab]?.makeHeaderAccessory()
+                    .font(FringeMetrics.captionFont).foregroundStyle(.white.opacity(0.6))
+            }
+            .frame(height: FringeMetrics.titleHeight)
+            if let module = state.modules[state.tab] {
+                module.makeView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            }
         }
+        .id(state.tab)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var width: CGFloat {
@@ -92,37 +104,40 @@ struct NotchView: View {
     }
 }
 
-private struct TabBar: View {
+/// The tabs as a column of icons on the left; the name shows on hover.
+private struct TabRail: View {
     @ObservedObject var state: NotchState
     @ObservedObject var hub: NotchHub
 
     var body: some View {
-        HStack(spacing: 4) {
+        VStack(spacing: 6) {
             ForEach(state.tabs, id: \.self) { tab in
                 let selected = state.tab == tab
                 Button { state.onSelectTab(tab) } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: tab.symbol).font(.system(size: 11, weight: .semibold))
-                        // Five titles do not fit; only the open tab is named, the others show their icon.
-                        if selected { Text(tab.title()).font(.system(size: 11, weight: .semibold)).lineLimit(1).fixedSize() }
-                        if let badge = hub.badges[tab], badge > 0 {
-                            Text("\(badge)").font(.system(size: 10, weight: .bold, design: .rounded)).monospacedDigit()
-                                .foregroundStyle(tab == .agents ? Color.black : Color.white)
-                                .fixedSize()
-                                .padding(.horizontal, 5).padding(.vertical, 1)
-                                .background(tab == .agents ? Color.orange : Color.white.opacity(0.25), in: Capsule())
+                    Image(systemName: tab.symbol)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.white.opacity(selected ? 1 : 0.5))
+                        .frame(width: FringeMetrics.railWidth, height: FringeMetrics.railWidth)
+                        .background(.white.opacity(selected ? 0.14 : 0), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .overlay(alignment: .topTrailing) {
+                            if let badge = hub.badges[tab], badge > 0 {
+                                Text(badge > 99 ? "99+" : "\(badge)")
+                                    .font(.system(size: 9, weight: .bold, design: .rounded)).monospacedDigit()
+                                    .foregroundStyle(tab == .agents ? Color.black : Color.white)
+                                    .fixedSize()
+                                    .padding(.horizontal, 4).padding(.vertical, 1)
+                                    .background(tab == .agents ? Color.orange : Color(white: 0.35), in: Capsule())
+                                    .offset(x: 3, y: -2)
+                            }
                         }
-                    }
-                    .foregroundStyle(.white.opacity(selected ? 1 : 0.6))
-                    .padding(.horizontal, 10).padding(.vertical, 6)
-                    .frame(maxWidth: selected ? nil : .infinity)
-                    .background(.white.opacity(selected ? 0.14 : 0), in: Capsule())
-                    .contentShape(Capsule())
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .help(tab.title())
             }
+            Spacer(minLength: 0)
         }
+        .frame(width: FringeMetrics.railWidth)
     }
 }
 
