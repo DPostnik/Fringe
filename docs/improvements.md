@@ -82,3 +82,11 @@ Status: delivered; needs the user's hover check (no synthetic input here).
 - A drag or text selection that leaves the panel is decided after the mouse button is released.
 
 Validation: full test suite passed; app rebuilt and relaunched.
+
+## 2026-10-17 - Live hand-off with Switchboard
+
+Status: delivered.
+
+- Switchboard `main` now carries the server side (FringeLinkServer, vendored FringeProtocol). After the rename Switchboard is `local.daniil.switchboard` with data in `~/Library/Application Support/Switchboard`; Fringe finds it by either id (commit 62a064b, from the rename work).
+
+Validation: after rebuilding Fringe and restarting Switchboard, Switchboard logged "Fringe connected; the island is handed off" and its island window left the screen; quitting Fringe brought it back, relaunching handed it off again.
