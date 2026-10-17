@@ -86,6 +86,7 @@ import FringeCore
         hub.onPost = { [weak self] in self?.post($0) }
         hub.onRetract = { [weak self] in self?.retract($0) }
         hub.onClose = { [weak self] in self?.collapse() }
+        hub.onOpenSettings = { [weak self] in self?.collapse(); self?.onOpenSettings() }
     }
 
     public func start() {

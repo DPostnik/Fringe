@@ -34,6 +34,7 @@ public extension FringeTabModule {
     var onPost: (PeekEvent) -> Void = { _ in }
     var onRetract: (String) -> Void = { _ in }
     var onClose: () -> Void = {}
+    var onOpenSettings: () -> Void = {}
 
     public init() {}
 
@@ -43,6 +44,8 @@ public extension FringeTabModule {
     public func retract(id: String) { onRetract(id) }
     /// Closes the panel, e.g. after an action that opens another app.
     public func closePanel() { onClose() }
+    /// Closes the panel and opens the Settings window, e.g. to connect an account.
+    public func openSettings() { onOpenSettings() }
 
     func requestFocus() { focusRequest &+= 1 }
 }

@@ -5,13 +5,14 @@ import FringeNotch
 /// The tab: up to 20 unseen Primary messages; a click opens the message in the browser.
 struct MailTabView: View {
     @ObservedObject var model: MailModel
+    let onOpenSettings: () -> Void
 
     var body: some View {
         switch model.status {
         case .notConfigured:
             FringeEmptyState(symbol: "envelope.badge.person.crop",
-                             message: L10n.text("Подключи Gmail: Настройки (шестерёнка справа вверху) → Почта.",
-                                                "Connect Gmail: Settings (the gear at the top right) → Mail."))
+                             message: L10n.text("Подключи Gmail в настройках Fringe.", "Connect Gmail in Fringe settings."),
+                             actionTitle: L10n.text("Открыть настройки", "Open Settings"), action: onOpenSettings)
         case .failed(let error, _) where error.isAuthentication:
             FringeEmptyState(symbol: "key.slash", message: error.message)
         case .connecting where model.messages.isEmpty, .offline where model.messages.isEmpty:

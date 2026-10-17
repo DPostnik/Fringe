@@ -63,6 +63,8 @@ struct TranslateView: View {
             TextEditor(text: $model.input)
                 .font(.system(size: 13))
                 .scrollContentBackground(.hidden)
+                // With a mouse attached macOS shows legacy scrollers; a gray bar on the black panel looks broken.
+                .scrollIndicators(.never)
                 .focused($inputFocused)
                 .padding(.horizontal, 6).padding(.vertical, 8)
                 .padding(.trailing, 18)

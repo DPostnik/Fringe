@@ -107,6 +107,8 @@ private struct TabBar: View {
                         if selected { Text(tab.title()).font(.system(size: 11, weight: .semibold)).lineLimit(1).fixedSize() }
                         if let badge = hub.badges[tab], badge > 0 {
                             Text("\(badge)").font(.system(size: 10, weight: .bold, design: .rounded)).monospacedDigit()
+                                .foregroundStyle(tab == .agents ? Color.black : Color.white)
+                                .fixedSize()
                                 .padding(.horizontal, 5).padding(.vertical, 1)
                                 .background(tab == .agents ? Color.orange : Color.white.opacity(0.25), in: Capsule())
                         }

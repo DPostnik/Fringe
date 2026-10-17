@@ -12,3 +12,54 @@ Status: delivered.
 - `scripts/build-app.sh` builds `build/Fringe.app` (`local.daniil.fringe`, LSUIElement, macOS 15+), signed with the Apple Development identity.
 
 Validation: `swift build` and `scripts/build-app.sh` succeeded; 14 FringeCore tests and 1 protocol test passed.
+
+## 2026-10-17 - Stage 2: Screenshots tab
+
+Status: implemented; live Spotlight results, the Desktop permission prompt and the actions still need a manual check.
+
+- Latest 30 captures from the `com.apple.screencapture` `location` folder (fallback `~/Desktop`), newest first, 4-column grid with QuickLookThumbnailing thumbnails cached in memory.
+- `NSMetadataQuery` on `kMDItemIsScreenCapture == 1`, only direct children of the folder, running only while the tab is visible; no polling. Screen recordings get a video badge.
+- Click opens, drag to another app, copy (file URL plus PNG/TIFF data), show in Finder, move to Trash; hover buttons and a context menu. States: loading, empty, no Desktop access, folder missing, Spotlight failure with Retry.
+
+Validation: 12 FringeScreenshotsTests passed; the tab rendered on the real notch (loading state while macOS asked for Desktop access).
+
+## 2026-10-17 - Stage 3: Calendar tab
+
+Status: implemented; the permission prompt, the `ical://` deep link and live refresh still need a manual check.
+
+- Read-only EventKit agenda for 7 days: Today / Tomorrow / dated groups, time or "all day", calendar color; current event highlighted, next one counts down (`TimelineView(.everyMinute)`, only while visible).
+- Full access requested on first show; states for not determined, denied (button to Privacy → Calendars) and restricted.
+- Refresh on `EKEventStoreChanged`, `NSCalendarDayChanged` and wake; changes while hidden mark the list stale. Cancelled and declined events hidden.
+- Join button for Meet, Zoom `/j/`, Teams meetup-join and teams.live.com links (strict host/path match); a row opens the event in Calendar.
+
+Validation: 27 FringeCalendarTests passed; the tab rendered on the real notch in the "requesting access" state.
+
+## 2026-10-17 - Stage 4: Translate tab
+
+Status: implemented; typing, focus by shortcut and Apple Translation success need a manual check.
+
+- Source/target pickers with detection, swap, multi-line input focused when opened by the shortcut, result with Copy and engine/detected-language labels. Translation 400 ms after typing stops, cancelling in-flight requests; last pair remembered.
+- Google's unofficial `gtx` endpoint (POST form body, 5000-character cap), parsed fail-closed. Network, HTTP or format errors fall back to Apple Translation with installed languages (macOS 26 direct session, macOS 15 `.translationTask` bridge). Settings: engine, clipboard prefill (off by default), note that text goes to Google.
+- Hidden the legacy scroller that macOS draws in the input with a mouse attached.
+
+Validation: 28 FringeTranslateTests passed (no network); a real Google response is the multi-sentence fixture; Apple "not installed" path confirmed on macOS 26.6.2; the tab rendered on the real notch.
+
+## 2026-10-17 - Stage 5: Mail tab (Gmail)
+
+Status: implemented; not yet validated with a real account (needs a Google app password).
+
+- Built-in IMAP client (Network.framework, TLS to imap.gmail.com:993): app password in the Keychain (`local.daniil.fringe.gmail`), read-only `EXAMINE INBOX`, `UID SEARCH UNSEEN X-GM-RAW "category:primary"`, `BODY.PEEK` headers for the newest 20, IDLE renewed every 20 minutes. Messages are never marked read.
+- Peek for new messages, unread counter on the strip and the tab, click opens Gmail by `X-GM-MSGID` (default browser or Chrome). Reconnect after wake, network change or error with 2 s / 10 s / 1 min / 5 min backoff; a rejected login waits for new credentials.
+- Not-configured state has an "Open Settings" button (`NotchHub.openSettings()`).
+
+Validation: 21 FringeMailTests passed; live Gmail greeting and CAPABILITY (IDLE, X-GM-EXT-1) checked; login rejection of an unknown account maps to the auth error; the tab rendered on the real notch.
+
+## 2026-10-17 - Stage 6-7: protocol, Agents tab, answers from the panel
+
+Status: Fringe side delivered and checked against a simulated Switchboard; the Switchboard side is on its branch `fringe-link`, not yet merged or run.
+
+- `FringeProtocol` v1: newline-delimited JSON with `version`; hello / snapshot / announce / answerResult from Switchboard, hello / openChat / answer from Fringe. Another version, an unknown type, a malformed payload or a line over 1 MiB closes the session. `FringePeer` checks the peer's signature by audit token (bundle id plus the same Team ID).
+- Agents tab: up to 8 chats with activity and duration, request cards with reason and details. Approvals show Decline / Allow once when Switchboard announces the `answer` capability; an answer is sent once, a dropped connection shows "check the chat" and never resends. Other requests open the chat. "Switchboard is not running" with Open; reconnects on launch, wake and with 1/2/5/15 s retries.
+- A request announcement opens the panel on Agents for 8 s, then returns to the previous tab once the pointer leaves; the strip shows the waiting count.
+
+Validation: 9 protocol tests and 4 FringeAgentsTests passed. End-to-end against a Python stand-in on the real socket path: hello exchanged, snapshot rendered (waiting chat with an approval card, working chat with "3 min"), the announcement opened the panel and it collapsed to the compact strip after 8 s, disconnect hid the strip. Answer buttons were not clicked (no synthetic input available).

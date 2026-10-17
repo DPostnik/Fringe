@@ -48,7 +48,7 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .frame(width: 480)
-        .frame(minHeight: 420)
+        .frame(minHeight: 600)
     }
 
     private func binding(_ key: WritableKeyPath<FringePreferences, Bool>) -> Binding<Bool> {
