@@ -81,7 +81,8 @@ public enum AnswerState: Equatable, Sendable {
     }
 
     func launchSwitchboard() {
-        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: FringeProtocol.serverBundleID) else { return }
+        guard let url = FringeProtocol.serverBundleIDs.lazy
+            .compactMap({ NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }).first else { return }
         NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
     }
 
@@ -95,11 +96,12 @@ public enum AnswerState: Equatable, Sendable {
     }
 
     private nonisolated static func isSwitchboard(_ note: Notification) -> Bool {
-        (note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?.bundleIdentifier == FringeProtocol.serverBundleID
+        (note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?.bundleIdentifier
+            .map(FringeProtocol.serverBundleIDs.contains) ?? false
     }
 
     private var switchboardRunning: Bool {
-        !NSRunningApplication.runningApplications(withBundleIdentifier: FringeProtocol.serverBundleID).isEmpty
+        FringeProtocol.serverBundleIDs.contains { !NSRunningApplication.runningApplications(withBundleIdentifier: $0).isEmpty }
     }
 
     private func connectIfRunning() {

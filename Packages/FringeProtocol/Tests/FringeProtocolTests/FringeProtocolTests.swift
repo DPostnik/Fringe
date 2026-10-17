@@ -70,5 +70,5 @@ private func line(_ text: String) -> Data { Data(text.utf8) }
 
 @Test func socketLivesInSwitchboardDataDirectory() {
     let url = FringeProtocol.socketURL(home: URL(filePath: "/Users/test"))
-    #expect(url.path == "/Users/test/Library/Application Support/Context Desk/fringe.sock")
+    #expect(url.path == "/Users/test/Library/Application Support/Switchboard/fringe.sock")
 }
