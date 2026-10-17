@@ -72,3 +72,13 @@ Status: delivered.
 - Calendar: an event store created before access was granted returned no events; the store is recreated after the grant (also when access is turned on in System Settings while Fringe runs). If no Google calendar is visible to macOS, the tab shows a hint with a button to System Settings → Internet Accounts. Reloads log calendar and event counts.
 
 Validation: full test suite passed (23 mail tests incl. two nudge tests, 28 calendar tests); after a rebuild the app logged "Mail snapshot: 0 unseen" (the message read in the browser no longer counted) and "Calendar reload: 6 calendars, Google: true, 1 events", and the tab listed the event.
+
+## 2026-10-17 - Fix: the open panel closed on its own
+
+Status: delivered; needs the user's hover check (no synthetic input here).
+
+- The close delay (350 ms) used the pointer position from when it started. Over Fringe's own panel macOS sends no mouse-moved events, so a pointer that slipped past the edge and came back was never noticed and the panel closed under it. Open/close is now decided from the pointer position when the delay ends.
+- Typing kept the panel open only when it was opened by the shortcut; opened by hover, it closed as soon as the pointer left during typing. Leaving while a text field is focused now pins the panel until Esc or a click elsewhere.
+- A drag or text selection that leaves the panel is decided after the mouse button is released.
+
+Validation: full test suite passed; app rebuilt and relaunched.

@@ -285,27 +285,40 @@ import FringeCore
         // Quantized so ordinary pointer motion redraws the buddy only when its gaze really moves.
         let gaze = (max(-1, min(1, (mouse.x - panel.frame.midX) / 320)) * 8).rounded() / 8
         if state.look.x != gaze { state.look.x = gaze }
-        // Once open, the panel stays open while the pointer is over it.
-        let inside = islandRect(for: hovering || pinnedOpen ? .expanded : state.mode).insetBy(dx: -4, dy: -4).contains(mouse)
-        if inside != hovering {
-            hoverTask?.cancel()
-            hoverTask = Task { [weak self] in
-                // A short delay keeps a pointer crossing the top edge from flashing the panel open.
-                try? await Task.sleep(for: .milliseconds(inside ? 120 : 350))
-                guard let self, !Task.isCancelled else { return }
-                self.hoverChanged(inside)
-            }
-        }
+        if pointerInside() != hovering { scheduleHover() }
         updateClickThrough()
     }
 
-    private func hoverChanged(_ inside: Bool) {
+    /// Once open, the panel stays open while the pointer is over it.
+    private func pointerInside() -> Bool {
+        islandRect(for: hovering || pinnedOpen ? .expanded : state.mode).insetBy(dx: -4, dy: -4).contains(NSEvent.mouseLocation)
+    }
+
+    private func scheduleHover() {
+        let inside = pointerInside()
+        hoverTask?.cancel()
+        hoverTask = Task { [weak self] in
+            // A short delay keeps a pointer crossing the top edge from flashing the panel open.
+            try? await Task.sleep(for: .milliseconds(inside ? 120 : 350))
+            guard let self, !Task.isCancelled else { return }
+            self.hoverChanged()
+        }
+    }
+
+    private func hoverChanged() {
+        // Decide from where the pointer is now, not where it was when the delay started: over our own
+        // panel macOS sends no mouse-moved events, so a quick return inside would otherwise go unnoticed.
+        let inside = pointerInside()
+        guard inside != hovering else { return }
+        // A drag or text selection that leaves the panel is decided after the button is released.
+        if !inside, NSEvent.pressedMouseButtons != 0 { scheduleHover(); return }
         hovering = inside
         if !inside {
             if requestWaitsForHoverExit {
                 endRequest(); queue.advance(); showCurrent()
-            } else if NotchPolicy.closesOnHoverExit(editing: isEditing), queue.current?.kind != .agentRequest {
-                pinnedOpen = false
+            } else if queue.current?.kind != .agentRequest {
+                // Typing keeps the panel open until Esc or a click elsewhere.
+                pinnedOpen = !NotchPolicy.closesOnHoverExit(editing: isEditing)
             }
             // A peek that waited behind the open panel is shown now.
             if queue.current != nil, queue.current?.kind != .agentRequest, state.peek == nil, !pinnedOpen { showCurrent(); return }
