@@ -103,7 +103,8 @@ private struct TabBar: View {
                 Button { state.onSelectTab(tab) } label: {
                     HStack(spacing: 5) {
                         Image(systemName: tab.symbol).font(.system(size: 11, weight: .semibold))
-                        Text(tab.title()).font(.system(size: 11, weight: .semibold)).lineLimit(1)
+                        // Five titles do not fit; only the open tab is named, the others show their icon.
+                        if selected { Text(tab.title()).font(.system(size: 11, weight: .semibold)).lineLimit(1).fixedSize() }
                         if let badge = hub.badges[tab], badge > 0 {
                             Text("\(badge)").font(.system(size: 10, weight: .bold, design: .rounded)).monospacedDigit()
                                 .padding(.horizontal, 5).padding(.vertical, 1)
@@ -111,12 +112,13 @@ private struct TabBar: View {
                         }
                     }
                     .foregroundStyle(.white.opacity(selected ? 1 : 0.6))
-                    .padding(.horizontal, 9).padding(.vertical, 6)
-                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .frame(maxWidth: selected ? nil : .infinity)
                     .background(.white.opacity(selected ? 0.14 : 0), in: Capsule())
                     .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
+                .help(tab.title())
             }
         }
     }

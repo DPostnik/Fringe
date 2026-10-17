@@ -19,6 +19,10 @@ import FringeTranslate
         controller.onOpenSettings = { [weak self] in self?.showSettings() }
         controller.start()
         self.controller = controller
+        // Development aid: `open build/Fringe.app --args -FringeOpenTab translate` opens the panel pinned on a tab.
+        if let tab = UserDefaults.standard.string(forKey: "FringeOpenTab").flatMap(FringeTab.init(rawValue:)) {
+            controller.open(tab, focus: false)
+        }
     }
 
     /// Launching the app again (Finder, Spotlight) opens Settings: the only window it has.
