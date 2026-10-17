@@ -8,11 +8,13 @@ enum MailSession {
         case snapshot(MailSnapshot)
     }
 
-    static func run(address: String, password: String, report: @escaping @Sendable (Event) async -> Void) async throws {
+    static func run(address: String, password: String, nudger: MailNudger? = nil,
+                    report: @escaping @Sendable (Event) async -> Void) async throws {
         let login: String
         do { login = try IMAPCommand.login(user: address, password: password) } catch { throw MailError.invalidCredentials }
 
         let client = IMAPClient()
+        nudger?.attach(client)
         do {
             try await client.connect()
             try await session(client: client, login: login, report: report)
@@ -120,7 +122,9 @@ enum MailSession {
         var changed = pending.contains { $0.changesMailbox }
         while !changed {
             let remaining = clock.now.duration(to: deadline)
-            guard remaining > .zero, let response = try await client.next(timeout: remaining) else { break }
+            // Nil: the renewal interval passed or the app asked for a refresh (Gmail does not always
+            // report a message read elsewhere while idling).
+            guard remaining > .zero, let response = try await client.next(timeout: remaining, nudgeable: true) else { break }
             switch response {
             case .status(.bye, _, let text): throw MailError.server(text)
             case .tagged: throw MailError.protocolError("IDLE ended by the server")
@@ -135,5 +139,18 @@ enum MailSession {
         try await client.send(line: IMAPCommand.done)
         let result = try await client.collect(tag: tag)
         if result.status != .ok { throw MailError.server("IDLE \(result.status.rawValue): \(result.text)") }
+    }
+}
+
+/// Lets the app ask a running session to refresh now, e.g. when the user looks at the Mail tab.
+final class MailNudger: @unchecked Sendable {
+    private let lock = NSLock()
+    private weak var client: IMAPClient?
+
+    func attach(_ client: IMAPClient) { lock.withLock { self.client = client } }
+
+    func nudge() {
+        guard let client = lock.withLock({ self.client }) else { return }
+        Task { await client.nudge() }
     }
 }

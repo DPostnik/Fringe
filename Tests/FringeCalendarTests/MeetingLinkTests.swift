@@ -70,3 +70,10 @@ import Testing
             == "ical://ekevent/a1b2@google.com?method=show&options=more")
     #expect(CalendarLinks.eventURL(externalIdentifier: "x/y?z")?.absoluteString == "ical://ekevent/x%2Fy%3Fz?method=show&options=more")
 }
+
+@Test func googleSourcesAreRecognizedByTitle() {
+    #expect(CalendarSources.isGoogle(sourceTitle: "Google"))
+    #expect(CalendarSources.isGoogle(sourceTitle: "someone@gmail.com"))
+    #expect(!CalendarSources.isGoogle(sourceTitle: "iCloud"))
+    #expect(!CalendarSources.isGoogle(sourceTitle: "Other"))
+}

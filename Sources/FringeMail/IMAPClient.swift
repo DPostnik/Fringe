@@ -18,6 +18,10 @@ actor IMAPClient {
     private var failure: MailError?
     private var waiter: CheckedContinuation<IMAPResponse?, Error>?
     private var waiterGeneration = 0
+    /// The current wait may be ended early by `nudge()` (only the IDLE wait is).
+    private var waiterNudgeable = false
+    /// A nudge that arrived while nothing nudgeable was waiting; the next nudgeable wait returns at once.
+    private var nudgePending = false
     private var connectWaiter: CheckedContinuation<Void, Error>?
     private var ready = false
     private var tagCounter = 0
@@ -141,17 +145,20 @@ actor IMAPClient {
     private func deliver(_ response: IMAPResponse) {
         if let waiter {
             self.waiter = nil
+            waiterNudgeable = false
             waiter.resume(returning: response)
         } else {
             queue.append(response)
         }
     }
 
-    /// The next response, or nil when `timeout` passes first.
-    func next(timeout: Duration) async throws -> IMAPResponse? {
+    /// The next response, or nil when `timeout` passes first (or, if `nudgeable`, when `nudge()` is called).
+    func next(timeout: Duration, nudgeable: Bool = false) async throws -> IMAPResponse? {
         if !queue.isEmpty { return queue.removeFirst() }
         if let failure { throw failure }
         try Task.checkCancellation()
+        if nudgeable, nudgePending { nudgePending = false; return nil }
+        waiterNudgeable = nudgeable
         waiterGeneration += 1
         let generation = waiterGeneration
         let timer = Task { [weak self] in
@@ -171,6 +178,15 @@ actor IMAPClient {
     private func expire(_ generation: Int) {
         guard generation == waiterGeneration, let waiter else { return }
         self.waiter = nil
+        waiterNudgeable = false
+        waiter.resume(returning: nil)
+    }
+
+    /// Ends the IDLE wait early so the caller refreshes now; buffered responses are kept.
+    func nudge() {
+        guard waiterNudgeable, let waiter else { nudgePending = true; return }
+        self.waiter = nil
+        waiterNudgeable = false
         waiter.resume(returning: nil)
     }
 

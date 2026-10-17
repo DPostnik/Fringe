@@ -6,6 +6,7 @@ struct CalendarActions {
     var open: (CalendarEntry) -> Void
     var join: (CalendarEntry) -> Void
     var openSettings: () -> Void
+    var openAccounts: () -> Void
 }
 
 struct CalendarTabView: View {
@@ -31,11 +32,31 @@ struct CalendarTabView: View {
                                                                      "Calendar access is restricted on this Mac."))
         case .granted:
             if model.loaded {
-                CalendarList(entries: model.entries, actions: actions)
+                VStack(spacing: 6) {
+                    CalendarList(entries: model.entries, actions: actions)
+                    if !model.hasGoogleCalendars { AccountHint(open: actions.openAccounts) }
+                }
             } else {
                 ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+    }
+}
+
+/// Fringe reads the system Calendar; a Google calendar appears there only after the account is added to macOS.
+private struct AccountHint: View {
+    let open: () -> Void
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: "person.crop.circle.badge.plus").font(.system(size: 16)).foregroundStyle(.orange)
+            Text(L10n.text("Календарь Google не подключён к macOS. Добавь аккаунт Google в Интернет-аккаунтах и включи «Календари».",
+                           "Google Calendar is not connected to macOS. Add your Google account in Internet Accounts and turn on Calendars."))
+                .font(.system(size: 11)).foregroundStyle(.white.opacity(0.8)).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            Button(L10n.text("Открыть", "Open"), action: open).buttonStyle(FringeButtonStyle(prominent: true))
+        }
+        .padding(10)
+        .fringeCard()
     }
 }
 

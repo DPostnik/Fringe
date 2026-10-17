@@ -1,5 +1,6 @@
 import AppKit
 import EventKit
+import os
 import FringeCore
 
 /// Reads the next seven days from EventKit. Nothing happens until the tab is first shown; after that the
@@ -11,6 +12,10 @@ import FringeCore
     @Published private(set) var access: Access = .unknown
     @Published private(set) var entries: [CalendarEntry] = []
     @Published private(set) var loaded = false
+    /// False when no Google calendar is visible: the Google account is not added to macOS Internet Accounts.
+    @Published private(set) var hasGoogleCalendars = true
+
+    private let log = Logger(subsystem: "local.daniil.fringe", category: "calendar")
 
     private var store: EKEventStore?
     private var observers: [(NotificationCenter, NSObjectProtocol)] = []
@@ -23,7 +28,10 @@ import FringeCore
     func setVisible(_ visible: Bool) {
         self.visible = visible
         guard visible else { return }
+        let before = access
         updateAccess()
+        // Access granted in System Settings while Fringe runs: the old store never sees events.
+        if access == .granted, before != .granted, before != .unknown { resetStore(); stale = true }
         switch access {
         case .notDetermined where !requested: requestAccess()
         case .granted where stale: reload()
@@ -42,9 +50,20 @@ import FringeCore
                 guard let self else { return }
                 self.access = .unknown
                 self.updateAccess()
-                if self.access == .granted { self.stale = true; if self.visible { self.reload() } }
+                if self.access == .granted {
+                    // A store created before access was granted keeps returning no events; start a fresh one.
+                    self.resetStore()
+                    self.stale = true
+                    if self.visible { self.reload() }
+                }
             }
         }
+    }
+
+    private func resetStore() {
+        observers.forEach { center, token in center.removeObserver(token) }
+        observers.removeAll()
+        store = nil
     }
 
     private func eventStore() -> EKEventStore {
@@ -71,8 +90,12 @@ import FringeCore
         let window = CalendarSchedule.window(now: Date(), calendar: calendar)
         // Start a day early so a timed event still in progress after midnight is included.
         let from = calendar.date(byAdding: .day, value: -1, to: window.start) ?? window.start
+        let calendars = store.calendars(for: .event)
+        hasGoogleCalendars = calendars.contains { CalendarSources.isGoogle(sourceTitle: $0.source.title) }
+        let sources = Set(calendars.map { "\($0.source.sourceType.rawValue)" }).sorted().joined(separator: ",")
         let predicate = store.predicateForEvents(withStart: from, end: window.end, calendars: nil)
         entries = store.events(matching: predicate).compactMap(Self.entry(from:))
+        log.info("Calendar reload: \(calendars.count) calendars, source types [\(sources, privacy: .public)], Google: \(self.hasGoogleCalendars), \(self.entries.count) events")
         stale = false
         loaded = true
     }
@@ -118,5 +141,13 @@ import FringeCore
     private static func color(of calendar: EKCalendar?) -> CalendarColor {
         guard let color = calendar?.color?.usingColorSpace(.sRGB) else { return .fallback }
         return CalendarColor(red: color.redComponent, green: color.greenComponent, blue: color.blueComponent)
+    }
+}
+
+enum CalendarSources {
+    /// macOS names a Google account's source after the account ("Google" or the Gmail address).
+    static func isGoogle(sourceTitle: String) -> Bool {
+        let title = sourceTitle.lowercased()
+        return title.contains("google") || title.hasSuffix("@gmail.com") || title.hasSuffix("@googlemail.com")
     }
 }

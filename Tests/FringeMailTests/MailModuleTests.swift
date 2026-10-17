@@ -245,3 +245,28 @@ private func snapshot(_ uids: [UInt32], validity: UInt32 = 1) -> MailSnapshot {
     #expect(!MailError.timeout.isAuthentication)
     #expect(!MailError.network("offline").isAuthentication)
 }
+
+@Test func nudgeEndsTheIdleWaitEarly() async throws {
+    let client = IMAPClient()
+    let clock = ContinuousClock()
+    let started = clock.now
+    let waiting = Task { try await client.next(timeout: .seconds(30), nudgeable: true) }
+    try await Task.sleep(for: .milliseconds(100))
+    await client.nudge()
+    let response = try await waiting.value
+    #expect(response == nil)
+    #expect(started.duration(to: clock.now) < .seconds(5))
+}
+
+@Test func nudgeBeforeTheWaitIsKeptForTheNextIdleOnly() async throws {
+    let client = IMAPClient()
+    await client.nudge()
+    // A command wait is not ended by a pending nudge.
+    let command = try await client.next(timeout: .milliseconds(50))
+    #expect(command == nil)
+    let clock = ContinuousClock()
+    let started = clock.now
+    let idle = try await client.next(timeout: .seconds(30), nudgeable: true)
+    #expect(idle == nil)
+    #expect(started.duration(to: clock.now) < .seconds(5))
+}

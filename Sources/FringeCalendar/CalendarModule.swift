@@ -17,7 +17,11 @@ import FringeNotch
         AnyView(CalendarTabView(model: model, actions: CalendarActions(
             open: { [weak self] in self?.open($0) },
             join: { [weak self] in self?.join($0) },
-            openSettings: { [weak self] in self?.openPrivacySettings() })))
+            openSettings: { [weak self] in self?.openPrivacySettings() },
+            openAccounts: { [weak self] in
+                NSWorkspace.shared.open(CalendarLinks.internetAccounts)
+                self?.hub?.closePanel()
+            })))
     }
 
     public func visibilityChanged(_ visible: Bool) { model.setVisible(visible) }

@@ -63,3 +63,12 @@ Status: Fringe side delivered and checked against a simulated Switchboard; the S
 - A request announcement opens the panel on Agents for 8 s, then returns to the previous tab once the pointer leaves; the strip shows the waiting count.
 
 Validation: 9 protocol tests and 4 FringeAgentsTests passed. End-to-end against a Python stand-in on the real socket path: hello exchanged, snapshot rendered (waiting chat with an approval card, working chat with "3 min"), the announcement opened the panel and it collapsed to the compact strip after 8 s, disconnect hid the strip. Answer buttons were not clicked (no synthetic input available).
+
+## 2026-10-17 - Fix: stale unread mail counter, calendar access and Google hint
+
+Status: delivered.
+
+- Mail: Gmail does not always report a message read elsewhere during IDLE, so the strip kept counting it until the 20-minute renewal. The unseen list is now re-checked when the Mail tab opens, when the user leaves a browser (Chrome, Safari, Arc, Firefox, Edge, Brave; at most every 5 s), and at least every 5 minutes (IDLE renewal shortened from 20). A nudge ends the IDLE wait without dropping buffered responses. Session snapshots and failures are logged (counts only).
+- Calendar: an event store created before access was granted returned no events; the store is recreated after the grant (also when access is turned on in System Settings while Fringe runs). If no Google calendar is visible to macOS, the tab shows a hint with a button to System Settings → Internet Accounts. Reloads log calendar and event counts.
+
+Validation: full test suite passed (23 mail tests incl. two nudge tests, 28 calendar tests); after a rebuild the app logged "Mail snapshot: 0 unseen" (the message read in the browser no longer counted) and "Calendar reload: 6 calendars, Google: true, 1 events", and the tab listed the event.

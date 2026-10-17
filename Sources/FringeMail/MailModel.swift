@@ -3,6 +3,7 @@ import Combine
 import FringeCore
 import FringeNotch
 import Network
+import os
 
 public enum MailStatus: Equatable, Sendable {
     case notConfigured
@@ -33,6 +34,12 @@ public enum MailStatus: Equatable, Sendable {
     private var lastPath: (satisfied: Bool, interfaces: [String])?
     private var observers: [NSObjectProtocol] = []
     private var asleep = false
+    private var nudger = MailNudger()
+    private var lastNudge = Date.distantPast
+    private let log = Logger(subsystem: "local.daniil.fringe", category: "mail")
+    /// Leaving one of these apps likely means the user just read mail in Gmail.
+    private static let browsers: Set<String> = ["com.google.Chrome", "com.apple.Safari", "company.thebrowser.Browser",
+                                                "org.mozilla.firefox", "com.microsoft.edgemac", "com.brave.Browser"]
 
     init(keychain: MailKeychain = MailKeychain(), defaults: UserDefaults = .standard) {
         self.keychain = keychain
@@ -56,6 +63,11 @@ public enum MailStatus: Equatable, Sendable {
             let interfaces = path.availableInterfaces.map(\.name)
             Task { @MainActor in self?.pathChanged(satisfied: satisfied, interfaces: interfaces) }
         }
+        observers.append(center.addObserver(forName: NSWorkspace.didDeactivateApplicationNotification, object: nil, queue: .main) { note in
+            let bundleID = (note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?.bundleIdentifier
+            guard let bundleID, Self.browsers.contains(bundleID) else { return }
+            Task { @MainActor [weak self] in self?.refreshNow(reason: "left browser") }
+        })
         monitor.start(queue: DispatchQueue(label: "local.daniil.fringe.mail.path"))
         pathMonitor = monitor
         connect()
@@ -123,16 +135,19 @@ public enum MailStatus: Equatable, Sendable {
         generation += 1
         let generation = generation
         status = .connecting
+        let nudger = MailNudger()
+        self.nudger = nudger
         supervisor = Task { [weak self] in
             while !Task.isCancelled {
                 do {
-                    try await MailSession.run(address: address, password: password) { [weak self] event in
+                    try await MailSession.run(address: address, password: password, nudger: nudger) { [weak self] event in
                         await self?.handle(event, generation: generation)
                     }
                 } catch {
                     if Task.isCancelled { return }
                     guard let self else { return }
                     let failure = (error as? MailError) ?? .network(error.localizedDescription)
+                    self.log.error("Mail session ended: \(failure.message, privacy: .public)")
                     if failure.isAuthentication {
                         // Retrying a rejected password in a loop could lock the account; wait for new credentials.
                         self.status = .failed(failure, retryAt: nil)
@@ -146,6 +161,14 @@ public enum MailStatus: Equatable, Sendable {
                 }
             }
         }
+    }
+
+    /// Re-checks the unseen list without waiting for Gmail to report a change. At most every 5 s.
+    func refreshNow(reason: String) {
+        guard case .connected = status, Date().timeIntervalSince(lastNudge) > 5 else { return }
+        lastNudge = Date()
+        log.info("Mail refresh requested: \(reason, privacy: .public)")
+        nudger.nudge()
     }
 
     /// The "Retry" button: try again now.
@@ -169,6 +192,7 @@ public enum MailStatus: Equatable, Sendable {
             policy.reset()
             status = .connected
             let fresh = diff.update(snapshot)
+            log.info("Mail snapshot: \(snapshot.unseen.count) unseen, \(fresh.count) new")
             publish(messages: snapshot.messages, unseen: snapshot.unseen.count)
             for message in fresh.reversed() {
                 hub?.post(PeekEvent(id: "mail-\(message.uid)", kind: .mail, title: message.displaySender, detail: message.displaySubject))

@@ -92,7 +92,9 @@ public struct ReconnectPolicy: Sendable {
 
 /// How long one IDLE runs before it is renewed (Gmail ends idle connections after about 29 minutes).
 public enum MailTiming {
-    public static let idleRenewal: Duration = .seconds(20 * 60)
+    /// Also a safety net: Gmail does not always push a flag change (a message read elsewhere) during IDLE,
+    /// so the unseen list is re-checked at least this often.
+    public static let idleRenewal: Duration = .seconds(5 * 60)
     public static let commandTimeout: Duration = .seconds(60)
     public static let connectTimeout: Duration = .seconds(30)
 }
