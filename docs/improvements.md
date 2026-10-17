@@ -99,3 +99,12 @@ Status: delivered.
 - Shared `FringeMetrics` (spacing, row padding, corner radius, fonts) and a `fringeRow()` modifier; Mail and Screenshots moved their header controls into the title row; rows in Agents, Mail and Calendar use the same padding.
 
 Validation: full test suite passed; all five tabs captured on the real notch with the new layout (Agents showed a live chat from Switchboard).
+
+## 2026-10-17 - Calendar list in Settings; why Google events were missing
+
+Status: delivered.
+
+- Settings → Calendar lists every calendar macOS shares with Fringe (account, name, color, events in the shown window) with a switch to hide it; hidden calendars are remembered. Buttons open Google's CalDAV sync page (`calendar.google.com/calendar/syncselect`) and Internet Accounts. The Settings window opens taller (820 pt) and is resizable.
+- Diagnosis for the user's setup: Notion Calendar reads Google directly, but macOS syncs only the primary `d.postnik1@gmail.com` calendar, and with 0 events in the week, while Google holds events there (an interview on 2026-10-19) and in the secondary "AI" calendar (agent runs) and a shared calendar, none of which macOS lists. The fix is on the macOS/Google side: re-check the account in Internet Accounts and select the calendars on the sync page.
+
+Validation: full test suite passed; the Settings list on the real app showed d.postnik1@gmail.com (Google, 0 events), Birthdays, Holidays in Belarus (1 event) and daniil.postnik@gmail.com (0); events were compared with the Notion Calendar connector.

@@ -67,5 +67,7 @@ public enum CalendarLinks {
     /// System Settings, Privacy & Security, Calendars.
     public static let privacySettings = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars")!
     /// System Settings, Internet Accounts, where a Google account's calendars are turned on.
+    /// Google's page that picks which calendars (incl. shared and secondary) macOS syncs over CalDAV.
+    public static let googleSyncSelect = URL(string: "https://calendar.google.com/calendar/syncselect")!
     public static let internetAccounts = URL(string: "x-apple.systempreferences:com.apple.Internet-Accounts-Settings.extension")!
 }

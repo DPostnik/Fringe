@@ -38,8 +38,9 @@ import FringeTranslate
                 .environment(\.locale, L10n.locale)
             let window = NSWindow(contentViewController: NSHostingController(rootView: view))
             window.title = L10n.text("Настройки Fringe", "Fringe Settings")
-            window.styleMask = [.titled, .closable]
+            window.styleMask = [.titled, .closable, .resizable]
             window.isReleasedWhenClosed = false
+            window.setContentSize(NSSize(width: 480, height: 820))
             window.center()
             settingsWindow = window
         }

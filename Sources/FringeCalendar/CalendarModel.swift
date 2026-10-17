@@ -14,6 +14,13 @@ import FringeCore
     @Published private(set) var loaded = false
     /// False when no Google calendar is visible: the Google account is not added to macOS Internet Accounts.
     @Published private(set) var hasGoogleCalendars = true
+    /// Every event calendar macOS shares with Fringe, for the Settings list.
+    @Published private(set) var calendars: [CalendarInfo] = []
+    /// Calendars the user turned off in Settings.
+    @Published private(set) var hiddenCalendars: Set<String>
+
+    private static let hiddenKey = "calendarHiddenIDs"
+    private let defaults: UserDefaults
 
     private let log = Logger(subsystem: "local.daniil.fringe", category: "calendar")
 
@@ -23,7 +30,22 @@ import FringeCore
     private var stale = true
     private var requested = false
 
-    init() {}
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        hiddenCalendars = Set(defaults.stringArray(forKey: Self.hiddenKey) ?? [])
+    }
+
+    func setCalendar(_ id: String, shown: Bool) {
+        if shown { hiddenCalendars.remove(id) } else { hiddenCalendars.insert(id) }
+        defaults.set(hiddenCalendars.sorted(), forKey: Self.hiddenKey)
+        if access == .granted { reload() }
+    }
+
+    /// The Settings section opened: list calendars even if the tab has not been shown yet.
+    func refreshForSettings() {
+        updateAccess()
+        if access == .granted { reload() }
+    }
 
     func setVisible(_ visible: Bool) {
         self.visible = visible
@@ -94,7 +116,13 @@ import FringeCore
         hasGoogleCalendars = calendars.contains { CalendarSources.isGoogle(sourceTitle: $0.source.title) }
         let sources = Set(calendars.map { "\($0.source.sourceType.rawValue)" }).sorted().joined(separator: ",")
         let predicate = store.predicateForEvents(withStart: from, end: window.end, calendars: nil)
-        entries = store.events(matching: predicate).compactMap(Self.entry(from:))
+        let events = store.events(matching: predicate)
+        let counts = Dictionary(grouping: events, by: { $0.calendar.calendarIdentifier }).mapValues(\.count)
+        self.calendars = calendars.map {
+            CalendarInfo(id: $0.calendarIdentifier, title: $0.title, account: $0.source.title,
+                         color: Self.color(of: $0), events: counts[$0.calendarIdentifier] ?? 0)
+        }.sorted { ($0.account, $0.title) < ($1.account, $1.title) }
+        entries = events.filter { !hiddenCalendars.contains($0.calendar.calendarIdentifier) }.compactMap(Self.entry(from:))
         log.info("Calendar reload: \(calendars.count) calendars, source types [\(sources, privacy: .public)], Google: \(self.hasGoogleCalendars), \(self.entries.count) events")
         stale = false
         loaded = true
@@ -150,4 +178,15 @@ enum CalendarSources {
         let title = sourceTitle.lowercased()
         return title.contains("google") || title.hasSuffix("@gmail.com") || title.hasSuffix("@googlemail.com")
     }
+}
+
+/// One calendar as the Settings list shows it.
+struct CalendarInfo: Identifiable, Equatable {
+    var id: String
+    var title: String
+    /// The account (source) it belongs to, e.g. iCloud or a Gmail address.
+    var account: String
+    var color: CalendarColor
+    /// Events in the shown window (yesterday to seven days ahead).
+    var events: Int
 }

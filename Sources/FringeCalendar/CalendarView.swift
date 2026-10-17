@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import FringeCore
 import FringeNotch
@@ -161,4 +162,46 @@ private struct CalendarRow: View {
     }
 
     private var color: Color { Color(red: entry.color.red, green: entry.color.green, blue: entry.color.blue) }
+}
+
+/// Settings: every calendar macOS shares with Fringe, with its account, event count and a switch.
+struct CalendarSettingsView: View {
+    @ObservedObject var model: CalendarModel
+    let openAccounts: () -> Void
+
+    var body: some View {
+        Group {
+            if model.access != .granted {
+                Text(L10n.text("Нет доступа к календарю. Открой вкладку «Календарь» в шторке, чтобы разрешить его.",
+                               "No calendar access. Open the Calendar tab in the notch to allow it."))
+                    .font(.caption).foregroundStyle(.secondary)
+            } else if model.calendars.isEmpty {
+                Text(L10n.text("macOS не передаёт ни одного календаря.", "macOS shares no calendars."))
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                ForEach(model.calendars) { info in
+                    Toggle(isOn: Binding(get: { !model.hiddenCalendars.contains(info.id) },
+                                         set: { model.setCalendar(info.id, shown: $0) })) {
+                        HStack(spacing: 8) {
+                            Circle().fill(Color(red: info.color.red, green: info.color.green, blue: info.color.blue)).frame(width: 9, height: 9)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(info.title)
+                                Text("\(info.account) · " + L10n.text("событий на 7 дней: \(info.events)", "events in 7 days: \(info.events)"))
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+            Text(L10n.text("Fringe берёт события из системного Календаря macOS. Нет календаря Google или в нём пусто: проверь аккаунт в Интернет-аккаунтах (включены «Календари», вход не истёк), а дополнительные и общие календари отметь на странице синхронизации Google.",
+                           "Fringe reads the macOS Calendar. A Google calendar missing or empty? Check the account in Internet Accounts (Calendars on, sign-in not expired) and tick secondary and shared calendars on Google's sync page."))
+                .font(.caption).foregroundStyle(.secondary)
+            HStack {
+                Spacer()
+                Button(L10n.text("Синхронизация Google", "Google sync page")) { NSWorkspace.shared.open(CalendarLinks.googleSyncSelect) }
+                Button(L10n.text("Интернет-аккаунты", "Internet Accounts"), action: openAccounts)
+            }
+        }
+        .onAppear { model.refreshForSettings() }
+    }
 }

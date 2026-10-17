@@ -26,6 +26,10 @@ import FringeNotch
 
     public func visibilityChanged(_ visible: Bool) { model.setVisible(visible) }
 
+    public func makeSettingsView() -> AnyView? {
+        AnyView(CalendarSettingsView(model: model, openAccounts: { NSWorkspace.shared.open(CalendarLinks.internetAccounts) }))
+    }
+
     private func open(_ entry: CalendarEntry) {
         let opened = CalendarLinks.eventURL(externalIdentifier: entry.externalIdentifier).map { NSWorkspace.shared.open($0) } ?? false
         if !opened { openCalendarApp() }
