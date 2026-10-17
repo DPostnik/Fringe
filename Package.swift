@@ -17,6 +17,11 @@ let package = Package(
         .executableTarget(name: "FringeApp", dependencies: [
             "FringeCore", "FringeNotch", "FringeAgents", "FringeMail", "FringeCalendar", "FringeScreenshots", "FringeTranslate"
         ]),
-        .testTarget(name: "FringeCoreTests", dependencies: ["FringeCore"])
+        .testTarget(name: "FringeCoreTests", dependencies: ["FringeCore"]),
+        .testTarget(name: "FringeAgentsTests", dependencies: ["FringeAgents"]),
+        .testTarget(name: "FringeMailTests", dependencies: ["FringeMail"]),
+        .testTarget(name: "FringeCalendarTests", dependencies: ["FringeCalendar"]),
+        .testTarget(name: "FringeScreenshotsTests", dependencies: ["FringeScreenshots"]),
+        .testTarget(name: "FringeTranslateTests", dependencies: ["FringeTranslate"])
     ]
 )
